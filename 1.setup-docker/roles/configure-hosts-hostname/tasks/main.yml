@@ -1,9 +1,6 @@
 ---  
 - name: Change 127.0.1.1 entry in /etc/hosts
-  replace:
-    path: /etc/hosts
-    regexp: '^127\.0\.1\.1 .*'
-    replace: '127.0.1.1 {{ inventory_hostname }}'
+  shell: echo "127.0.1.1 {{ inventory_hostname }}" >> /etc/hosts
 
 - name: Check if hosts exists in /etc/hosts
   shell: grep -q "MiniSOC Cluster hosts" /etc/hosts
