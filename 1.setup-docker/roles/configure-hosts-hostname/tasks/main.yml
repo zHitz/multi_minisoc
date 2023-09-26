@@ -1,0 +1,27 @@
+---  
+- name: Change 127.0.1.1 entry in /etc/hosts
+  replace:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1 .*'
+    replace: '127.0.1.1 {{ inventory_hostname }}'
+
+- name: Check if hosts exists in /etc/hosts
+  shell: grep -q "MiniSOC Cluster hosts" /etc/hosts
+  register: grep_result
+  ignore_errors: yes
+  failed_when: false
+
+- name: Append hosts template to /etc/hosts if not found
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ lookup('template', './templates/hosts.j2') }}"
+    insertafter: EOF
+  when: grep_result.rc != 0
+
+- name: "Configure hostname"
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Reload hosts file
+  command: systemctl restart systemd-resolved
+  ignore_errors: yes

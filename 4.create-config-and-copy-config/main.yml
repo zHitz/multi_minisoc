@@ -1,0 +1,6 @@
+---
+- name: Setup config
+  hosts: workers
+  become: yes
+  roles:
+    - copy-config

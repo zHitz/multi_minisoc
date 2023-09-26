@@ -1,0 +1,4 @@
+# MiniSOC cluster hosts
+{% for host in groups['all'] %}
+{{ hostvars[host]['ansible_host'] }} {{ host }}
+{% endfor %}

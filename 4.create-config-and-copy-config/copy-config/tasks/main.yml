@@ -1,0 +1,4 @@
+- name: Copy config directory
+  copy:
+    src: "/his-cybersoc"
+    dest: "/"

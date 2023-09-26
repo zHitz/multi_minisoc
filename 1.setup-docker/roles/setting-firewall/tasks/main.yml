@@ -1,0 +1,36 @@
+---
+- name: Install UFW (Ubuntu)
+  apt:
+    name: ufw
+  when: ansible_distribution == 'Ubuntu'
+
+- name: Install firewalld (CentOS)
+  yum:
+    name: firewalld
+  when: ansible_distribution == 'CentOS'
+
+- name: Start and enable UFW or firewalld service
+  systemd:
+    name: "{{ 'ufw' if ansible_distribution == 'Ubuntu' else 'firewalld' }}"
+    state: started
+    enabled: yes
+
+- name: Allow SSH (Port 22) through UFW or firewalld (CentOS)
+  firewalld:
+    service: ssh
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when: ansible_distribution == 'CentOS'
+
+- name: Allow SSH (Port 22) through UFW (Ubuntu)
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Enable UFW (Ubuntu)
+      ufw:
+        state: enabled
+      when: ansible_distribution == 'Ubuntu'

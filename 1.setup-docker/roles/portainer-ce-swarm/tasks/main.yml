@@ -1,0 +1,37 @@
+---
+- name: Copy Portainer Agent Stack YML
+  copy:
+    src: "{{ role_path }}/files/portainer-agent-stack.yml"
+    dest: /tmp/portainer-agent-stack.yml
+
+- name: Deploy Portainer Stack
+  shell: docker stack deploy -c /tmp/portainer-agent-stack.yml portainer
+
+- name: Set api_endpoint variable
+  set_fact:
+    api_endpoint: "http://{{ ansible_host }}:9000/api"
+
+- name: Wait for container
+  wait_for:
+    port: "9000"
+    host: "{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}"
+    delay: 0
+    sleep: 5
+    timeout: 60
+
+- name: Check if an Administrator account has been created
+  uri:
+    url: "{{ api_endpoint }}/users/admin/check"
+    method: GET
+    return_content: yes
+    status_code: [200, 204, 404]
+  register: admin_check
+
+- name: Configure admin user password
+  uri:
+    url: "{{ api_endpoint }}/users/admin/init"
+    method: POST
+    return_content: yes
+    body_format: json
+    body: {"Username": "{{ portainer_admin_user }}", "Password": "{{ portainer_admin_password }}"}
+  when: admin_check.status not in [200,204]

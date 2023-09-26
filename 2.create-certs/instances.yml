@@ -1,0 +1,14 @@
+instances:
+  - name: "his-cybersoc-logs" 
+    ip: 
+      - "127.0.0.1"
+      - "10.0.0.4"
+      - "104.208.112.56"
+    dns: 
+      - "his-cybersoc-logs"
+      - "cybersoc.hissc.com.vn"
+  - name: "his-cybersoc-dashboard"
+    ip: 
+      - "127.0.0.1"
+    dns: 
+      - "his-cybersoc-dashboard"
