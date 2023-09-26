@@ -1,52 +1,6 @@
 ---
-- name: Setup pre-requisites
-  hosts: all
-  become: yes
-  roles:
-    - configure-hosts-hostname
-
-- name: Install docker
-  become: yes
-  hosts: all
-  roles:
-    - install-docker
-
-- name: Comfirm before Configure Firewall
-  hosts: all
-  become: yes
-  vars_prompt:
-    - name: confirm_setting_firewall
-      prompt: "Do you want to change Setting Firewall ? (yes/no)"
-      private: no
-
-  tasks:
-    - name: Setting firewall
-      include_role:
-        name: setting-firewall
-      when: confirm_setting_firewall == 'yes'
-
-- name: initialize docker swarm (master)
-  hosts: master
-  become: yes
-  roles:
-    - docker-swarm-manager
-
-- name: add workers to the swarm
+- name: set up images
   hosts: workers
   become: yes
   roles:
-    - docker-swarm-workers
-
-- name: Deploy-Portainer-CE-Swarm
-  hosts: master
-  become: yes
-  gather_facts: no
-  vars_prompt:
-    - name: portainer_admin_user
-      prompt: "Enter the Portainer admin username"
-      private: no
-    - name: portainer_admin_password
-      prompt: "Enter the Portainer admin password (min.  12 characters)"
-      private: yes
-  roles:
-    - portainer
+    - setup-images

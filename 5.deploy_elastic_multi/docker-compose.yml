@@ -1,0 +1,211 @@
+version: "3.7"
+
+services:
+  setup:
+    image: ${IMAGE_NAME}
+    hostname: his-cybersoc-setup
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+    user: "0"
+    deploy:
+      replicas: 1
+      placement:
+        constraints: 
+        - "node.hostname == ${LOCATION_SETUP}"
+        max_replicas_per_node: 1
+    command: >
+      bash -c '
+        if [ x${ELASTIC_PASSWORD} == x ]; then
+          echo "Set the ELASTIC_PASSWORD environment variable in the .env file";
+          exit 1;
+        elif [ x${KIBANA_PASSWORD} == x ]; then
+          echo "Set the KIBANA_PASSWORD environment variable in the .env file";
+          exit 1;
+        fi;
+        echo "Waiting for Elasticsearch availability";
+        until curl -s --cacert config/certs/ca/ca.crt https://${NODE_NAME_MASTER1}:9200 | grep -q "missing authentication credentials"; do sleep 30; done;
+        echo "Setting kibana_system password";
+        until curl -s -X POST --cacert config/certs/ca/ca.crt -u "elastic:${ELASTIC_PASSWORD}" -H "Content-Type: application/json" https://${NODE_NAME_MASTER1}:9200/_security/user/kibana_system/_password -d "{\"password\":\"${KIBANA_PASSWORD}\"}" | grep -q "^{}"; do sleep 10; done;
+        echo "All done!";
+      '
+    networks:
+      - his-cybersoc_net
+
+  master1:
+    image: ${IMAGE_NAME}
+    hostname: ${NODE_NAME_MASTER1}
+    restart: always
+    volumes:
+      - ${DATA_DIR}/${NODE_NAME_MASTER1}:${DATA_ES}
+      - ${CONFIG_DIR}/${NODE_NAME_MASTER1}/elasticsearch.yml:${CONFIG_ES}/elasticsearch.yml
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      - node.name=${NODE_NAME_MASTER1}
+      - cluster.initial_master_nodes=${CLUSTER_INITIAL_MASTER_NODES}
+      - discovery.seed_hosts=${DISCOVERY_SEED_HOSTS}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS_ES_MASTER1}
+    deploy:
+      replicas: 1
+      placement:
+        constraints: 
+        - "node.hostname == ${LOCATION_MASTER1}"
+        max_replicas_per_node: 1
+      resources:
+        limits:
+          cpus: ${CPUS_LIMIT_ES_MASTER1}
+          memory: ${MEMORY_LIMIT_ES_MASTER1}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - his-cybersoc_net
+
+  coordination1:
+    image: ${IMAGE_NAME}
+    hostname: ${NODE_NAME_COORDINATION1}
+    restart: always
+    volumes:
+      - ${DATA_DIR}/${NODE_NAME_COORDINATION1}:${DATA_ES}
+      - ${CONFIG_DIR}/${NODE_NAME_COORDINATION1}/elasticsearch.yml:${CONFIG_ES}/elasticsearch.yml
+      - "/etc/localtime:/etc/localtime:ro"
+    ports:
+      - ${ES_PORT}:9200
+      - ${ES_CROSS_PORT}:9300
+    environment:
+      - node.name=${NODE_NAME_COORDINATION1}
+      - cluster.initial_master_nodes=${CLUSTER_INITIAL_MASTER_NODES}
+      - discovery.seed_hosts=${DISCOVERY_SEED_HOSTS}
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS_ES_COORDINATION1}
+    deploy:
+      replicas: 1
+      placement:
+        constraints: 
+        - "node.hostname == ${LOCATION_COORDINATION1}"
+        max_replicas_per_node: 1
+      resources:
+        limits:
+          cpus: ${CPUS_LIMIT_ES_COORDINATION1}
+          memory: ${MEMORY_LIMIT_ES_COORDINATION1}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - his-cybersoc_net
+
+  hot1:
+    image: ${IMAGE_NAME}
+    hostname: ${NODE_NAME_HOT1}
+    restart: always
+    volumes:
+      - ${DATA_DIR}/${NODE_NAME_HOT1}:${DATA_ES}
+      - ${CONFIG_DIR}/${NODE_NAME_HOT1}/elasticsearch.yml:${CONFIG_ES}/elasticsearch.yml
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      - node.name=${NODE_NAME_HOT1}
+      - cluster.initial_master_nodes=${CLUSTER_INITIAL_MASTER_NODES}
+      - discovery.seed_hosts=${DISCOVERY_SEED_HOSTS}
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS_ES_HOT1}
+    deploy:
+      replicas: 1
+      placement:
+        constraints: 
+        - "node.hostname == ${LOCATION_HOT1}"
+        max_replicas_per_node: 1
+      resources:
+        limits:
+          cpus: ${CPUS_LIMIT_ES_HOT1}
+          memory: ${MEMORY_LIMIT_ES_HOT1}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - his-cybersoc_net
+
+  ml1:
+    image: ${IMAGE_NAME}
+    hostname: ${NODE_NAME_ML1}
+    restart: always
+    volumes:
+      - ${DATA_DIR}/${NODE_NAME_ML1}:${DATA_ES}
+      - ${CONFIG_DIR}/${NODE_NAME_ML1}/elasticsearch.yml:${CONFIG_ES}/elasticsearch.yml
+      - "/etc/localtime:/etc/localtime:ro"
+    environment:
+      - node.name=${NODE_NAME_ML1}
+      - cluster.initial_master_nodes=${CLUSTER_INITIAL_MASTER_NODES}
+      - discovery.seed_hosts=${DISCOVERY_SEED_HOSTS}
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS_ES_ML1}
+    deploy:
+      replicas: 1
+      placement:
+        constraints: 
+        - "node.hostname == ${LOCATION_ML1}"
+        max_replicas_per_node: 1
+      resources:
+        limits:
+          cpus: ${CPUS_LIMIT_ES_ML1}
+          memory: ${MEMORY_LIMIT_ES_ML1}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - his-cybersoc_net
+
+  dashboard1:
+    image: his-cybersoc/dashboard:8.5.0
+    hostname: his-cybersoc-dashboard1
+    restart: always
+    volumes:
+      - ${DATA_DASH1}:/usr/share/kibana/data
+      - ${CONFIG_DASH1}/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - "/etc/localtime:/etc/localtime:ro"
+    ports:
+      - ${KIBANA_PORT}:5601
+    deploy:
+      replicas: 1
+      placement:
+        constraints: 
+        - "node.hostname == ${LOCATION_DASH1}"
+        max_replicas_per_node: 1
+      resources:
+        limits:
+          cpus: ${CPUS_LIMIT_DASHBOARD1}
+          memory: ${MEMORY_LIMIT_DASHBOARD1}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - his-cybersoc_net
+
+  # logstash:
+  #   image: docker.elastic.co/logstash/logstash:8.5.0
+  #   hostname: his-cybersoc-logstash
+  #   restart: always
+  #   ports:
+  #     - target: 514
+  #       published: 514
+  #       protocol: udp
+  #   volumes:
+  #     - ${CONFIG_LOGSTASH}/logstash.yml:/usr/share/logstash/config/logstash.yml
+  #     - ${CONFIG_LOGSTASH}/pipelines.yml:/usr/share/logstash/config/pipelines.yml
+  #     - "/etc/localtime:/etc/localtime:ro"
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         cpus: ${CPUS_LIMIT_LOGSTASH}
+  #         memory: ${MEMORY_LIMIT_LOGSTASH}
+  #   ulimits:
+  #     memlock:
+  #       soft: -1
+  #       hard: -1
+  #   networks:
+  #     - siem_net
+networks:
+  his-cybersoc_net:
+    external: true

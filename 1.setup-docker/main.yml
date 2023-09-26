@@ -49,4 +49,4 @@
       prompt: "Enter the Portainer admin password (min.  12 characters)"
       private: yes
   roles:
-    - portainer
+    - portainer-ce-swarm

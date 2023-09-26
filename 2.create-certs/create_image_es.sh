@@ -18,13 +18,17 @@ if [ "$EUID" -ne 0 ]; then
   echo "Please run this script as root or with equivalent privileges."
   exit 1
 fi
-# Check if the script has enough arguments
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 <elastic_version>"
-  exit 1
-fi
-STACK_VERSION="$1"
-source ../.env
+# Định nghĩa hàm để xóa container
+cleanup() {
+    echo "Cleaning up..."
+    docker rm -f es-create-certs
+    exit 1
+}
+
+# Bắt tín hiệu tắt (Ctrl + C) và gọi hàm cleanup
+trap cleanup INT
+read -p "Which version do you want to create a certificate for Elastic ? " STACK_VERSION
+source ../5.deploy_elastic_multi/.env
 # Create Container
 echo "Step 0: Creating a Docker Container..."
 if docker ps -a --format '{{.Names}}' | grep -q "es-create-certs"; then
@@ -36,14 +40,16 @@ fi
 # Chain 0
 # Ask the user if they already have a CA file
 read -p "Do you have a CA file yet? (Y/N) [Y/y]: " answer
-
+answer="${answer:-Y}"
 if [[ $answer == "Y" || $answer == "y" ]]; then
     # If yes, ask the user to enter the path to the CA file
     echo "Step 1: Copying the CA file to the Docker Container..."
-    read -p "Please enter the path to the CA file: " ca_path_folder
+    read -p "Please enter the path to the CA file [/path/5.deploy_elastic_multi/ca]: " ca_path_folder
     read -p "Please enter filename CA crt [ca.crt]: " ca_file_name_crt
+    ca_file_name_crt="${ca_file_name_crt:-ca.crt}"
     read -p "Please enter filename CA key [ca.key]: " ca_file_name_key
-    read -p "Please enter the path to the instances.yml file [/root]: " ins_path_folder
+    ca_file_name_key="${ca_file_name_key:-ca.key}"
+    read -p "Please enter the path to the instances.yml file [/path/2.create-certs]: " ins_path_folder
     docker cp $ins_path_folder/instances.yml es-create-certs:/usr/share/elasticsearch/config/certs
     docker cp $ca_path_folder es-create-certs:/usr/share/elasticsearch/config/certs
     ca_folder_name=$(basename $ca_path_folder)
@@ -56,25 +62,31 @@ if [[ $answer == "Y" || $answer == "y" ]]; then
     echo "Certificates created and copied to the host."
     echo "Step 3: Starting create image for Elasticsearch.........."
     read -p "Please enter image name [his-cybersoc/logs-example:8.5.0]: " image_name
+    image_name="${image_name:-his-cybersoc/logs:8.5.0}"
+    echo "Image name default is $image_name"
     echo "Step 3.1: Starting commit image for Elasticsearch.........."
     docker commit es-create-certs $image_name
     docker images "$image_name"
     read -p "Please enter filename .tar [image-his-cybersoc-logs-example:8.5.0.tar]: " filename_tar
+    if [[ ! $filename_tar == *".tar" ]]; then
+    filename_tar="${filename_tar}.tar"
+    fi
     echo "Step 3.2: Starting build image to file .tar for Elasticsearch.........."
-    save_command="docker save -o ../5.deploy_elastic_single/images/$filename_tar $image_name"
+    save_command="docker save -o ../5.deploy_elastic_multi/images/$filename_tar $image_name"
     $save_command
     exit_code=$?
     if [ $exit_code -eq 0 ]; then
         echo "File '$filename_tar' has been successfully created"
-        echo "IMAGE_FILE_ES=$filename_tar" >> ../.env
-        echo "IMAGE_NAME="$image_name"" >> ../.env
+        echo "$filename_tar" >> ../5.deploy_elastic_multi/images/images.txt
+        echo "IMAGE_FILE_ES=$filename_tar" >> ../5.deploy_elastic_multi/.env
+        echo "IMAGE_NAME="$image_name"" >> ../5.deploy_elastic_multi/.env
     else
         echo "File '$filename_tar' was not found. 'docker save' may have failed."
     fi
     docker rm -f es-create-certs
 else
     # If no, create a new CA file
-    read -p "Please enter the path to the instances.yml file [/root]: " ins_path_folder
+    read -p "Please enter the path to the instances.yml file [/path/2.create-certs]: " ins_path_folder
     docker cp $ins_path_folder/instances.yml es-create-certs:/usr/share/elasticsearch/config/certs
     # Chain 1,2 Create and unzip CA folder
     echo "Step 1: Creating and Unzipping ES Server CA Folder..."
@@ -89,13 +101,18 @@ else
     # Chain 5 Create image
     echo "Step 3: Starting create image for Elasticsearch.........."
     read -p "Please enter image name [his-cybersoc/logs-example:8.5.0]: " image_name
+    image_name="${image_name:-his-cybersoc/logs:8.5.0}"
+    echo "Image name default is $image_name"
     read -p "Please enter filename .tar [image-his-cybersoc-logs-example:8.5.0.tar]: " filename_tar
     echo "Step 3.1: Starting commit image for Elasticsearch.........."
     docker commit es-create-certs $image_name
     docker images "$image_name"
     read -p "Please enter filename .tar [image-his-cybersoc-logs-example:8.5.0.tar]: " filename_tar
+    if [[ ! $filename_tar == *".tar" ]]; then
+    filename_tar="${filename_tar}.tar"
+    fi
     echo "Step 3.2: Starting build image to file .tar for Elasticsearch.........."
-    save_command="docker save -o ../5.deploy_elastic_single/images/$filename_tar $image_name"
+    save_command="docker save -o ../5.deploy_elastic_multi/images/$filename_tar $image_name"
     $save_command
     exit_code=$?
     if [ $exit_code -eq 0 ]; then

@@ -32,3 +32,4 @@ if [ -f "$source_dir/node_info.txt" ]; then
 else
   echo "node_info.txt not existed."
 fi
+ansible-playbook -i ../1.setup-docker/inventory.ini main.yml --ask-vault-pass

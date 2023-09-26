@@ -1,0 +1,15 @@
+---
+- name: Copy images
+  copy:
+    src: '../5.deploy_elastic_single/images'
+    dest: './'
+
+- name: Read the filename from images.txt
+  shell: cat ./images/images.txt
+  register: image_files
+
+- name: Load Docker images
+  shell: docker load -i "images/{{ item }}"
+  loop: "{{ image_files.stdout_lines }}"
+  register: docker_load_results
+  changed_when: false

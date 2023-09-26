@@ -3,7 +3,7 @@ server.host: "0.0.0.0"
 elasticsearch.hosts: [ "https://his-cybersoc-logs:9200" ] #### edit http
 
 
-xpack.security.enabled: true
+#xpack.security.enabled: true
 elasticsearch.username: "kibana_system"
 elasticsearch.password: "RMqYdTzGBIfNr9tDsE29"
 elasticsearch.ssl.certificateAuthorities: "/usr/share/kibana/config/certs/ca/ca.crt"
